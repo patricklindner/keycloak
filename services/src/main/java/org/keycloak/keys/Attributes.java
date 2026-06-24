@@ -27,6 +27,7 @@ import org.keycloak.provider.ProviderConfigProperty;
 
 import static org.keycloak.provider.ProviderConfigProperty.BOOLEAN_TYPE;
 import static org.keycloak.provider.ProviderConfigProperty.FILE_TYPE;
+import static org.keycloak.provider.ProviderConfigProperty.INTEGER_TYPE;
 import static org.keycloak.provider.ProviderConfigProperty.LIST_TYPE;
 import static org.keycloak.provider.ProviderConfigProperty.STRING_TYPE;
 
@@ -79,6 +80,9 @@ public interface Attributes {
             "16", "24", "32", "64", "128", "256", "512");
 
     String ALGORITHM_KEY = "algorithm";
+
+    String NUMBER_DAYS_VALID = "numberDaysValid";
+    ProviderConfigProperty NUMBER_DAYS_VALID_PROPERTY = new ProviderConfigProperty(NUMBER_DAYS_VALID, "Valid for (days)", "Number of days the certificate should be valid", INTEGER_TYPE, "3650");
 
     ProviderConfigProperty RS_ALGORITHM_PROPERTY = new ProviderConfigProperty(ALGORITHM_KEY, "Algorithm", "Intended algorithm for the key", LIST_TYPE,
             Algorithm.RS256,

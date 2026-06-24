@@ -17,10 +17,13 @@
 
 package org.keycloak.keys;
 
+import java.math.BigInteger;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.cert.Certificate;
 import java.security.interfaces.RSAPrivateKey;
+import java.util.Calendar;
+import java.util.Date;
 
 import org.keycloak.Config;
 import org.keycloak.common.util.CertificateUtils;
@@ -41,6 +44,7 @@ import org.jboss.logging.Logger;
 public abstract class AbstractGeneratedRsaKeyProviderFactory extends AbstractRsaKeyProviderFactory {
 
     private int defaultKeySize = 2048;
+    private int defaultNumberValidDays = 3650;
 
     abstract protected Logger getLogger();
 
@@ -52,14 +56,21 @@ public abstract class AbstractGeneratedRsaKeyProviderFactory extends AbstractRsa
     }
 
     protected ProviderConfigurationBuilder generatedRsaKeyConfigurationBuilder() {
-        ProviderConfigProperty prop = Attributes.KEY_SIZE_PROPERTY.get();
-        prop.setDefaultValue(defaultKeySize);
-        return rsaKeyConfigurationBuilder().property(prop);
+        ProviderConfigProperty keySizeProp = Attributes.KEY_SIZE_PROPERTY.get();
+        keySizeProp.setDefaultValue(defaultKeySize);
+
+        ProviderConfigProperty numberDaysValidProp = Attributes.NUMBER_DAYS_VALID_PROPERTY;
+        numberDaysValidProp.setDefaultValue(defaultNumberValidDays);
+
+        return rsaKeyConfigurationBuilder()
+                .property(keySizeProp)
+                .property(numberDaysValidProp);
     }
 
     @Override
     public void init(Config.Scope config) {
         this.defaultKeySize = config.getInt(Attributes.KEY_SIZE_KEY, 2048);
+        this.defaultNumberValidDays = config.getInt(Attributes.NUMBER_DAYS_VALID, defaultNumberValidDays);
     }
 
     @Override
@@ -131,7 +142,8 @@ public abstract class AbstractGeneratedRsaKeyProviderFactory extends AbstractRsa
 
     private void generateCertificate(RealmModel realm, ComponentModel model, KeyPair keyPair) {
         try {
-            Certificate certificate = CertificateUtils.generateV1SelfSignedCertificate(keyPair, realm.getName());
+            Date validityEndDate = createValidityEndDate(model.get(Attributes.NUMBER_DAYS_VALID, 3650));
+            Certificate certificate = CertificateUtils.generateV1SelfSignedCertificate(keyPair, realm.getName(), BigInteger.valueOf(System.currentTimeMillis()), validityEndDate);
             model.put(Attributes.CERTIFICATE_KEY, PemUtils.encodeCertificate(certificate));
         } catch (Throwable t) {
             getLogger().warnf("Failed to generate certificate for key provider '%s' in realm '%s'. Details: %s", model.getName(), realm.getName(), t.getMessage());
@@ -141,4 +153,12 @@ public abstract class AbstractGeneratedRsaKeyProviderFactory extends AbstractRsa
             throw new ComponentValidationException("Failed to generate certificate", t);
         }
     }
+
+
+    private Date createValidityEndDate(int numberOfDays) {
+        Calendar calendar = Calendar.getInstance();
+        calendar.add(Calendar.DAY_OF_YEAR, numberOfDays);
+        return calendar.getTime();
+    }
+
 }

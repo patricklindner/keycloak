@@ -19,6 +19,8 @@ package org.keycloak.tests.keys;
 
 import java.security.interfaces.RSAPublicKey;
 import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Date;
 
 import jakarta.ws.rs.core.Response;
 
@@ -41,10 +43,13 @@ import org.keycloak.testframework.util.ApiUtil;
 import org.keycloak.tests.suites.DatabaseTest;
 import org.keycloak.utils.StringUtil;
 
+import org.apache.commons.lang3.time.DateUtils;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
@@ -70,7 +75,7 @@ public class GeneratedRsaKeyProviderTest {
         defaultKeysize(GeneratedRsaEncKeyProviderFactory.ID, KeyUse.ENC);
     }
 
-    private void defaultKeysize(String providerId, KeyUse keyUse) throws Exception {
+    private void defaultKeysize(String providerId, KeyUse keyUse) {
         long priority = System.currentTimeMillis();
 
         ComponentRepresentation rep = createRep("valid", providerId);
@@ -107,7 +112,7 @@ public class GeneratedRsaKeyProviderTest {
         largeKeysize(GeneratedRsaEncKeyProviderFactory.ID, KeyUse.ENC);
     }
 
-    private void largeKeysize(String providerId, KeyUse keyUse) throws Exception {
+    private void largeKeysize(String providerId, KeyUse keyUse) {
         long priority = System.currentTimeMillis();
 
         ComponentRepresentation rep = createRep("valid", providerId);
@@ -136,16 +141,16 @@ public class GeneratedRsaKeyProviderTest {
     }
 
     @Test
-    public void updatePriorityForSig() throws Exception {
+    public void updatePriorityForSig()  {
         updatePriority(GeneratedRsaKeyProviderFactory.ID, KeyUse.SIG);
     }
 
     @Test
-    public void updatePriorityForEnc() throws Exception {
+    public void updatePriorityForEnc()  {
         updatePriority(GeneratedRsaEncKeyProviderFactory.ID, KeyUse.ENC);
     }
 
-    private void updatePriority(String providerId, KeyUse keyUse) throws Exception {
+    private void updatePriority(String providerId, KeyUse keyUse) {
         long priority = System.currentTimeMillis();
 
         ComponentRepresentation rep = createRep("valid", providerId);
@@ -186,7 +191,7 @@ public class GeneratedRsaKeyProviderTest {
         updateKeysize(GeneratedRsaEncKeyProviderFactory.ID, KeyUse.ENC);
     }
 
-    private void updateKeysize(String providerId, KeyUse keyUse) throws Exception {
+    private void updateKeysize(String providerId, KeyUse keyUse)  {
         long priority = System.currentTimeMillis();
 
         ComponentRepresentation rep = createRep("valid", providerId);
@@ -226,13 +231,59 @@ public class GeneratedRsaKeyProviderTest {
         invalidKeysize(GeneratedRsaEncKeyProviderFactory.ID);
     }
 
-    private void invalidKeysize(String providerId) throws Exception {
+
+    private void invalidKeysize(String providerId)  {
         ComponentRepresentation rep = createRep("invalid", providerId);
         rep.getConfig().putSingle("keySize", "1234");
 
         Response response = realm.admin().components().add(rep);
         String expectedKeySizesDisplay = StringUtil.joinValuesWithLogicalCondition("or", Arrays.asList(cryptoHelper.getExpectedSupportedRsaKeySizes()));
         assertErrror(response, "'Key size' should be " + expectedKeySizesDisplay);
+    }
+
+
+    @Test
+    public void createKeyWithCustomValidityDate() {
+        customValidityDate();
+    }
+
+    private void customValidityDate() {
+        // make priority the time to
+        long priority = System.currentTimeMillis();
+
+        ComponentRepresentation rep = createRep("customValidityDate", GeneratedRsaKeyProviderFactory.ID);
+        rep.setConfig(new MultivaluedHashMap<>());
+        rep.getConfig().putSingle("priority", Long.toString(priority));
+        rep.getConfig().putSingle("numberDaysValid", "10");
+
+        Response response = realm.admin().components().add(rep);
+        String id = ApiUtil.getCreatedId(response);
+        realm.cleanup().add(r -> r.components().component(id).remove());
+        response.close();
+
+        ComponentRepresentation createdRep = realm.admin().components().component(id).toRepresentation();
+        assertEquals(2, createdRep.getConfig().size());
+        assertEquals("10", createdRep.getConfig().getFirst("numberDaysValid"));
+
+        KeysMetadataRepresentation keys = realm.admin().keys().getKeyMetadata();
+
+        KeysMetadataRepresentation.KeyMetadataRepresentation key = keys.getKeys().get(0);
+
+        assertNotNull(key);
+        assertEquals(AlgorithmType.RSA.name(), key.getType());
+        assertEquals(priority, key.getProviderPriority());
+
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(new Date());
+        calendar.add(Calendar.DAY_OF_YEAR, 10);
+
+        Date certNotAfter = PemUtils.decodeCertificate(key.getCertificate()).getNotAfter();
+
+        assertTrue(DateUtils.isSameDay(calendar.getTime(), certNotAfter));
+        assertTrue(DateUtils.isSameDay(calendar.getTime(), new Date(key.getValidTo())));
+
+        assertEquals(KeyUse.SIG, key.getUse());
+
     }
 
     protected void assertErrror(Response response, String error) {
