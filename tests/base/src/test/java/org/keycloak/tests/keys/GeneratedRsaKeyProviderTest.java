@@ -112,7 +112,7 @@ public class GeneratedRsaKeyProviderTest {
         largeKeysize(GeneratedRsaEncKeyProviderFactory.ID, KeyUse.ENC);
     }
 
-    private void largeKeysize(String providerId, KeyUse keyUse) {
+    private void largeKeysize(String providerId, KeyUse keyUse) throws Exception {
         long priority = System.currentTimeMillis();
 
         ComponentRepresentation rep = createRep("valid", providerId);
@@ -141,16 +141,16 @@ public class GeneratedRsaKeyProviderTest {
     }
 
     @Test
-    public void updatePriorityForSig()  {
+    public void updatePriorityForSig() throws Exception {
         updatePriority(GeneratedRsaKeyProviderFactory.ID, KeyUse.SIG);
     }
 
     @Test
-    public void updatePriorityForEnc()  {
+    public void updatePriorityForEnc() throws Exception {
         updatePriority(GeneratedRsaEncKeyProviderFactory.ID, KeyUse.ENC);
     }
 
-    private void updatePriority(String providerId, KeyUse keyUse) {
+    private void updatePriority(String providerId, KeyUse keyUse) throws Exception {
         long priority = System.currentTimeMillis();
 
         ComponentRepresentation rep = createRep("valid", providerId);
@@ -191,7 +191,7 @@ public class GeneratedRsaKeyProviderTest {
         updateKeysize(GeneratedRsaEncKeyProviderFactory.ID, KeyUse.ENC);
     }
 
-    private void updateKeysize(String providerId, KeyUse keyUse)  {
+    private void updateKeysize(String providerId, KeyUse keyUse) throws Exception {
         long priority = System.currentTimeMillis();
 
         ComponentRepresentation rep = createRep("valid", providerId);
@@ -231,8 +231,7 @@ public class GeneratedRsaKeyProviderTest {
         invalidKeysize(GeneratedRsaEncKeyProviderFactory.ID);
     }
 
-
-    private void invalidKeysize(String providerId)  {
+    private void invalidKeysize(String providerId) throws Exception {
         ComponentRepresentation rep = createRep("invalid", providerId);
         rep.getConfig().putSingle("keySize", "1234");
 
